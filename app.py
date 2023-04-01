@@ -1,7 +1,8 @@
-from flask import Flask,render_template,request,session
+from flask import Flask,render_template,request,session, make_response
 from flask_mysqldb import MySQL
 import base64
 app = Flask(__name__)
+app.debug=True
 app.secret_key = 'secret'
 
 app.config['SECRET_KEY'] = 'secret'
@@ -14,9 +15,39 @@ app.config['MYSQL_DB'] = 'diba_manager_proj'
 
 mysql=MySQL(app)
 
+
+@app.route('/view_reports')
+def view_reports():
+    # email=session['email']
+    cur = mysql.connection.cursor()
+
+    cur.execute('SELECT pp,fast,date FROM reports WHERE email = %s', ("soumil",))
+    tuple_reports=cur.fetchall()
+    print(tuple_reports)
+
+    return render_template("view_reports.html",items=tuple_reports)
+
 @app.route('/')
 def hello_world():
     return render_template('html.html')
+
+@app.route('/view')
+def view():
+    email = "anurag"
+    cur = mysql.connection.cursor()
+    cur.execute('SELECT email,file FROM reports WHERE email = %s', (email,))
+    email, file = cur.fetchone()
+    cur.close()
+    content_type = 'application/pdf'
+
+    # create response with file data and content type
+    response = make_response(file)
+    response.headers['Content-Type'] = content_type 
+    response.headers['Content-Disposition'] = 'inline; filename=' + email
+    return response
+
+
+
 
 @app.route('/upload', methods=['POST'])
 def upload():
@@ -24,23 +55,18 @@ def upload():
     file = request.files['file']
     # name = request.form['name']
     # description = request.form['description']
-    mimetype = file.mimetype
+    filename=file.filename
+    file = file.read()
+   
     # data = file.read()
     cursor = mysql.connection.cursor()
     email=session['email']
-
-    # Convert file data to base64 string
-    # encoded_data = base64.b64encode(data).decode('utf-8')
-
-    # Insert file into database
-    cursor.execute("""
-        INSERT INTO reports(email,file)
-        VALUES (%s, %s)
-    """, (email, mimetype))
+ 
+    cursor.execute("""INSERT INTO reports(email,file) VALUES (%s, %s)""", (email, file))
     mysql.connection.commit()
     cursor.close()
 
-    return 'File uploaded successfully'
+    return f'File {filename}uploaded successfully'
 
 @app.route('/login', methods=['POST'])
 def login():
