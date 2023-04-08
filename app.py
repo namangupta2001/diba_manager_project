@@ -1,6 +1,9 @@
-from flask import Flask,render_template,request,session, make_response
+from flask import Flask,render_template,request,session, make_response,jsonify
 from flask_mysqldb import MySQL
-import base64
+import PyPDF2
+import re
+import io
+
 app = Flask(__name__)
 app.debug=True
 app.secret_key = 'secret'
@@ -15,27 +18,52 @@ app.config['MYSQL_DB'] = 'diba_manager_proj'
 
 mysql=MySQL(app)
 
+def extract_hba1c(file):
+        # filename=file.filename
+        # extension = os.path.splitext(filename)[1]
+        # if extension == '.pdf':
+            # Load PDF file
+            pdf_reader = PyPDF2.PdfFileReader(io.BytesIO(file))
+            text = ''
+            for page in range(pdf_reader.getNumPages()):
+                text += pdf_reader.getPage(page).extractText()
+        # elif extension in ['.jpg', '.jpeg', '.png', '.gif', '.bmp']:
+        #     # Perform OCR on image file
+        #     image = cv2.imdecode(numpy.frombuffer(file.read(), numpy.uint8), cv2.IMREAD_UNCHANGED)
+        #     text = pytesseract.image_to_string(image)
+        # else:
+        #     print("Unsupported file format")
+
+        # Find HbA1c value from OCR output
+            hb_pattern ='HbA1c\s+\(GLYCOSYLATED HEMOGLOBIN\), \(HPLC\)[\n ]+BLOOD[\n ]+Method : HPLC METHOD[\n ]+(\d+\.\d+)\n'
+            hb_match = re.search(hb_pattern, text)
+            if hb_match:
+                hb_value = float(hb_match.group(1))
+                return hb_value
+              
+            else:
+                print("HbA1c value not found")
+
 
 @app.route('/view_reports')
 def view_reports():
-    # email=session['email']
+    email=session['email']
     cur = mysql.connection.cursor()
-
-    cur.execute('SELECT pp,fast,date FROM reports WHERE email = %s', ("soumil",))
+    cur.execute('SELECT date,pp,fast FROM reports WHERE email = %s', (email,))
     tuple_reports=cur.fetchall()
-    print(tuple_reports)
-
-    return render_template("view_reports.html",items=tuple_reports)
+    # print(tuple_reports)
+    return render_template("view_reports.html",items=tuple_reports,session=session)
 
 @app.route('/')
 def hello_world():
     return render_template('html.html')
 
-@app.route('/view')
+@app.route('/view', methods=['POST'])
 def view():
-    email = "anurag"
+    email = session['email']
+    date = request.form['view']
     cur = mysql.connection.cursor()
-    cur.execute('SELECT email,file FROM reports WHERE email = %s', (email,))
+    cur.execute('SELECT email,file FROM reports WHERE email = %s AND date=%s', (email,date))
     email, file = cur.fetchone()
     cur.close()
     content_type = 'application/pdf'
@@ -53,20 +81,23 @@ def view():
 def upload():
 
     file = request.files['file']
-    # name = request.form['name']
-    # description = request.form['description']
+    pp = request.form['pp']
+    fast = request.form['fast']
     filename=file.filename
     file = file.read()
-   
-    # data = file.read()
+    
+    ##passing the file to db
+    hb_value=extract_hba1c(file)
+  
+ 
     cursor = mysql.connection.cursor()
     email=session['email']
  
-    cursor.execute("""INSERT INTO reports(email,file) VALUES (%s, %s)""", (email, file))
+    cursor.execute("""INSERT INTO reports(email,file,pp,fast) VALUES (%s, %s,%s,%s)""", (email,file,pp,fast))
     mysql.connection.commit()
     cursor.close()
 
-    return f'File {filename}uploaded successfully'
+    return f'File {filename}uploaded successfully {str(hb_value)}'
 
 @app.route('/login', methods=['POST'])
 def login():
@@ -82,7 +113,7 @@ def login():
         cursor.execute('''SELECT * FROM user_login WHERE email=%s and password=%s''',(email,password))
         result=cursor.fetchone()
 
-        print(result)
+        # print(result)
         mysql.connection.commit()
         cursor.close()
         if result:       
@@ -108,7 +139,7 @@ def signup():
         if i:
             list_email.append(i[0])
    
-    print(list_email)   
+    # print(list_email)   
     if password==cnfpass :
         if email not in list_email:
 

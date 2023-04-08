@@ -3,27 +3,70 @@
 
 <head>
     <title>File Upload</title>
+    <link href="../static/dash.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-aFq/bzH65dt+w6FI2ooMVUpc+21e0SRygnTpmBvdBgSdnuTN7QbdgL+OapgHtvPp" crossorigin="anonymous">
+
+
 </head>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<!-- <script>
+    $(document).ready(function() {
+        $('#my-form').submit(function(event) {
+            // prevent the form from submitting normally
+            event.preventDefault();
+
+            // send an AJAX request to the Flask function
+            $.ajax({
+                type: 'POST',
+                url: '/upload',
+                data: $('#my-form').serialize(),
+                success: function(response) {
+                    // show the success alert
+                    $('#alert').removeClass('alert-danger').addClass('alert-success');
+                    $('#alert').html('Form submitted successfully!');
+                },
+                error: function(xhr, status, error) {
+                    // show the error alert
+                    $('#alert').removeClass('alert-success').addClass('alert-danger');
+                    $('#alert').html('An error occurred while submitting the form.');
+                }
+            });
+        });
+    });
+</script> -->
+
 
 <body>
 
-    <form method="post" enctype="multipart/form-data" action="{{ url_for('upload') }}">
-        <label for="pp">ENTER YOUR TODAYS PP:</label>
-        <input type="text" id="pp" name="pp" required><br><br>
-        <label for="FAST">ENTER YOUR TODAYS FASTING:</label>
-        <input type="text" id="fast" name="fast" required><br><br>
-        <h1>OR</h1>
-        <h2>Upload a PDF or Image File</h2>
-        <label for="file">File:</label>
-        <input type="file" id="file" name="file" accept=".pdf, .png, .jpg, .jpeg" required><br><br>
-        <input type="submit" value="Upload">
+    <div id="alert" class="alert"></div>
+    <div class="col-md-6 offset-md-3 mt-5">
 
 
-    </form>
-    <h1>OR</h1>
-    <form action="{{ url_for('view_reports') }}">
-        <input type="submit" value="view_reports">
-    </form>
+        <form accept-charset="UTF-8" id="my-form" method="post" enctype="multipart/form-data" action="/upload">
+            <div class="form-group">
+                <label for="exampleInputName">Enter your PP</label>
+                <input type="text" id="pp" name="pp" class="form-control" placeholder="0">
+            </div>
+            <div class="form-group">
+                <label for="exampleInputEmail1" required="required">Enter the value of your fasting </label>
+                <input type="text" id="fast" name="fast" class="form-control" placeholder="0">
+            </div>
+            <hr>
+            <div class="form-group mt-3">
+                <label class="mr-2">Upload your report pdf or image:</label>
+                <input type="file" id="file" name="file" accept=".pdf, .png, .jpg, .jpeg">
+            </div>
+            <hr>
+            <button type="submit" class="btn btn-primary">Submit</button>
+        </form>
+        <br>
+        <form action="{{ url_for('view_reports') }}">
+            <input type="submit" value="view all reports" class="btn btn-primary">
+        </form>
+    </div>
+
+
+
 </body>
 
 </html>
