@@ -1,9 +1,12 @@
-from flask import Flask,render_template,request,session, make_response,jsonify
+from flask import Flask,render_template,request,session, make_response,render_template_string
 from flask_mysqldb import MySQL
 import PyPDF2
 import re
 import io
-
+import io
+import base64
+import matplotlib.pyplot as plt
+from datetime import datetime
 app = Flask(__name__)
 app.debug=True
 app.secret_key = 'secret'
@@ -19,22 +22,12 @@ app.config['MYSQL_DB'] = 'diba_manager_proj'
 mysql=MySQL(app)
 
 def extract_hba1c(file):
-        # filename=file.filename
-        # extension = os.path.splitext(filename)[1]
-        # if extension == '.pdf':
-            # Load PDF file
+     
             pdf_reader = PyPDF2.PdfFileReader(io.BytesIO(file))
             text = ''
             for page in range(pdf_reader.getNumPages()):
                 text += pdf_reader.getPage(page).extractText()
-        # elif extension in ['.jpg', '.jpeg', '.png', '.gif', '.bmp']:
-        #     # Perform OCR on image file
-        #     image = cv2.imdecode(numpy.frombuffer(file.read(), numpy.uint8), cv2.IMREAD_UNCHANGED)
-        #     text = pytesseract.image_to_string(image)
-        # else:
-        #     print("Unsupported file format")
 
-        # Find HbA1c value from OCR output
             hb_pattern ='HbA1c\s+\(GLYCOSYLATED HEMOGLOBIN\), \(HPLC\)[\n ]+BLOOD[\n ]+Method : HPLC METHOD[\n ]+(\d+\.\d+)\n'
             hb_match = re.search(hb_pattern, text)
             if hb_match:
@@ -45,11 +38,71 @@ def extract_hba1c(file):
                 print("HbA1c value not found")
 
 
+@app.route('/chart')
+def chart():
+    email=session['email']
+    cur = mysql.connection.cursor()
+    cur.execute('SELECT DATE(date) as date, pp,fast,HbA1C FROM reports WHERE email = %s ', (email,))
+    chart_data = cur.fetchall()
+    cur.close()
+    # print(chart_data)
+    x_data=[]
+    y1_data=[]
+    y2_data=[]
+    y3_data=[]
+
+    for i in chart_data:
+        x_data.append(str(i[0]))
+        y1_data.append(i[1])
+        y2_data.append(i[2])
+        y3_data.append(i[3])
+    # dates = ['2022-01-01', '2022-02-01', '2022-03-01', '2022-04-01', '2022-05-01']
+    # x_data = [datetime.strptime(date, '%Y-%m-%d').date() for date in x_data]
+    print(x_data)
+    # y_data = [20, 10, 30, 15, 25]
+    
+    # Create a line chart using matplotlib
+    fig, ax = plt.subplots()
+    ax.plot(x_data, y1_data)
+    ax.set_xlabel('Dates')
+    ax.set_ylabel('Values of PP')
+    # Save the chart to a bytes buffer
+    buffer = io.BytesIO()
+    fig.set_size_inches(10, 6) 
+    fig.canvas.print_png(buffer)
+    buffer.seek(0)
+
+    # Encode the bytes buffer as base64
+    image_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
+
+    # Generate the HTML template for the chart
+    html = """
+     <html>
+        <head>
+            <title>Line Chart</title>
+            <style>
+                .chart-container {
+                    text-align: center;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="chart-container">
+                <h1>PP Line Chart</h1>
+                <img src="data:image/png;base64,{{ image_base64 }}">
+            </div>
+        </body>
+    </html>
+    """
+
+    # Render the HTML template with the chart data
+    return render_template_string(html, image_base64=image_base64)
+
 @app.route('/view_reports')
 def view_reports():
     email=session['email']
     cur = mysql.connection.cursor()
-    cur.execute('SELECT date,pp,fast FROM reports WHERE email = %s', (email,))
+    cur.execute('SELECT date,pp,fast,HbA1C FROM reports WHERE email = %s', (email,))
     tuple_reports=cur.fetchall()
     # print(tuple_reports)
     return render_template("view_reports.html",items=tuple_reports,session=session)
@@ -93,7 +146,7 @@ def upload():
     cursor = mysql.connection.cursor()
     email=session['email']
  
-    cursor.execute("""INSERT INTO reports(email,file,pp,fast) VALUES (%s, %s,%s,%s)""", (email,file,pp,fast))
+    cursor.execute("""INSERT INTO reports(email,file,pp,fast,HbA1C) VALUES (%s, %s,%s,%s,%s)""", (email,file,pp,fast,hb_value))
     mysql.connection.commit()
     cursor.close()
 
