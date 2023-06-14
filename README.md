@@ -1,7 +1,7 @@
 ##SUMMARY:-
-TECHNOLOGIES USED:- FLASK ,Python , Mysql ,HTML ,BOOTSTRAP,CSSS
+TECHNOLOGIES USED:- FLASK ,Python , Mysql ,HTML ,BOOTSTRAP,CSS
 
-Diba_manager webapp basically solves the clinical report management problem for diabetic patients by giving them options to store their pathalogy reports or simply storing the values for their sugar level for long term so that it becomes easy for the doctors to track their diabetic history .
+Diba_manager webapp basically solves the clinical report management problem for diabetic patients by giving them options to store their pathology reports or simply storing the values for their sugar level for long term so that it becomes easy for the doctors to track their diabetic history .
 
 
 Steps to run this project :-
